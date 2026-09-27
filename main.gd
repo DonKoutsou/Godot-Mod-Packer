@@ -7,6 +7,7 @@ class_name Main
 @export var log_Label : RichTextLabel
 
 
+var basePackPath : String
 var mod_Dir : String
 var GodotExec : String = "D:/Godot/Godot_v4.7-stable_win64.exe/Godot_v4.7-stable_win64.exe"
 
@@ -111,6 +112,37 @@ func GeneratePack() -> void:
 					
 				file_name = dir.get_next()
 
+func GeneratePackInt() -> void:
+	if (mod_Dir == ""):
+		Log("Missing Mod Directory")
+		return
+
+	ensure_project_godot_exists(mod_Dir)
+	
+	var output = []
+
+	var pack_args = []
+	if (basePackPath != ""):
+		pack_args = [
+			"--headless", 
+			"--path", mod_Dir, 
+			"--export-patch", "PackerDefault", execPath + "/Mod.pck" # Changed from --export-pack
+		]
+	else:
+		pack_args = [
+			"--headless", 
+			"--path", mod_Dir, 
+			"--export-pack", "PackerDefault", execPath + "/Mod.pck"
+		]
+	
+	print("Packing into PCK...")
+	var exit_code = OS.execute(GodotExec, pack_args, output, true)
+	
+	if exit_code == 0:
+		print("Mod pack successfully created at: ", execPath)
+	else:
+		push_error("Packing failed. Error logs: " + str(output))
+
 ##Launch godot on the background to import all the resources and generate the import files
 func generate_Import_Files():
 	#check for godot exec
@@ -142,10 +174,54 @@ func generate_Import_Files():
 
 
 func ensure_project_godot_exists(mod_path: String):
+	# 1. Ensure project.godot exists
 	var config_file_path = mod_path.path_join("project.godot")
 	if not FileAccess.file_exists(config_file_path):
 		var file = FileAccess.open(config_file_path, FileAccess.WRITE)
 		file.store_string("[config_version=5]\n\n[application]\nconfig/name=\"ModTemplate\"")
+		file.close()
+
+	# 2. Ensure export_presets.cfg exists with a default layout
+	var preset_file_path = mod_path.path_join("export_presets.cfg")
+	if not FileAccess.file_exists(preset_file_path):
+		var file = FileAccess.open(preset_file_path, FileAccess.WRITE)
+		
+		var preset_template : String
+		#Check if base pack is provided
+		if (basePackPath != ""):
+			var patch_list_str = 'PackedStringArray("%s")' % basePackPath
+		
+			preset_template = """[preset.0]
+			name="PackerDefault"
+			platform="Windows Desktop"
+			runnable=false
+			dedicated_server=false
+			custom_features=""
+			export_filter="all_resources"
+			include_filter=""
+			exclude_filter=""
+			patch_list={PATCH_LIST}
+			export_path="mod_compile.pck"
+
+			[preset.0.options]
+			""".replace("{PATCH_LIST}", patch_list_str)
+		else:
+			# We define a dummy preset named "PackerDefault" matching your CLI argument
+			preset_template = """
+			[preset.0]
+			name="PackerDefault"
+			platform="Windows Desktop"
+			runnable=false
+			dedicated_server=false
+			custom_features=""
+			export_filter="all_resources"
+			include_filter=""
+			exclude_filter=""
+			export_path="mod_output.pck"
+
+			[preset.0.options]
+			"""
+		file.store_string(preset_template.strip_edges())
 		file.close()
 
 
@@ -171,7 +247,7 @@ func _on_generate_import_pressed() -> void:
 func _on_generate_pack_pressed() -> void:
 	if (currentPack != null):
 		return
-	GeneratePack()
+	GeneratePackInt()
 
 
 func _on_pack_path_pressed() -> void:
