@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="Ignores" format=3 uid="uid://bglxgruq7c4jk"]
+
+[ext_resource type="Script" uid="uid://vsjfalxj0iwi" path="res://Ignores.gd" id="1_kbajc"]
+
+[resource]
+script = ExtResource("1_kbajc")
+ignored_Types = PackedStringArray("exe", "pck", "ignore", "godot", "bin", "cfg", "gdignore")
+ignored_Dirs = PackedStringArray(".godot/editor")
+ignored_Files = PackedStringArray("project.godot")
+metadata/_custom_type_script = "uid://vsjfalxj0iwi"
