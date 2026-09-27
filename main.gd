@@ -1,32 +1,88 @@
 extends Control
 
-const mod_Folder_Name : String = "/TestMod"
-const GodotExec : String = "D:/Godot/Godot_v4.7-stable_win64.exe/Godot_v4.7-stable_win64.exe"
+class_name Main
+
+@export var mod_Location_Label : Label
+@export var executable_Path_Label : Label
+@export var log_Label : RichTextLabel
+
+
+var mod_Dir : String
+var GodotExec : String = "D:/Godot/Godot_v4.7-stable_win64.exe/Godot_v4.7-stable_win64.exe"
+
+var filesToAdd : PackedStringArray
+var currentPack : PCKPacker
+
+var execPath
+
+var savedLog : PackedStringArray
+var ignores : Ignores
 
 func _ready() -> void:
-	#check for godot exec
-	if not FileAccess.file_exists(GodotExec):
-		push_error("Godot Editor binary missing from tool directory!")
-		return
-		
-	var execPath = OS.get_executable_path()
+	execPath = OS.get_executable_path()
 	execPath = execPath.replace(execPath.get_file(), "")
+	executable_Path_Label.text = GodotExec
+	mod_Location_Label.text = mod_Dir
 	
 	#save ignores in file for user to adjust
 	if not FileAccess.file_exists(execPath + "Packer_Ignores.tres"):
 		ResourceSaver.save(load("res://Ignores.tres"), execPath + "Packer_Ignores.tres")
 	
-	var ignores : Ignores = ResourceLoader.load(execPath + "Packer_Ignores.tres")
+	Log("Ignore table loaded.\nIgnoring :")
+	ignores = ResourceLoader.load(execPath + "Packer_Ignores.tres")
+	Log("Files:")
+	for g in ignores.ignored_Files:
+		Log("    " + g)
+	Log("Types:")
+	for g in ignores.ignored_Types:
+		Log("    ." + g)
+	Log("Directories:")
+	for g in ignores.ignored_Dirs:
+		Log("    " + g)
 	
+	
+
+func _process(_delta: float) -> void:
+	if (filesToAdd.size() > 0):
+		var next = filesToAdd[0]
+		filesToAdd.remove_at(0)
+		addFile(next)
+		printLog()
+	else: if (currentPack != null):
+		currentPack.flush(true)
+		currentPack = null
+		Log("Pack Generated in location {0}".format([execPath]))
+
+func printLog() -> void:
+	var t : String = ""
+	for g in savedLog:
+		t += "\n" + g
+	log_Label.text = t
+	
+func Log(t : String) -> void:
+	savedLog.append(t)
+	printLog()
+
+func ClearLog() -> void:
+	savedLog.clear()
+	printLog()
+
+func addFile(file : String) -> void:
+	var targetDir = file.replace(mod_Dir, "res:/")
+	currentPack.add_file(targetDir ,file)
+	Log("Placed file {0} to {1}".format([file, targetDir]))
+	
+
+func GeneratePack() -> void:
+	if (mod_Dir == ""):
+		Log("Missing Mod Directory")
+		return
 	#start creating pack
-	var packer = PCKPacker.new()
-	packer.pck_start("Mod.pck")
-	
-	#generate import files
-	generate_Import_Files(execPath + mod_Folder_Name)
+	currentPack = PCKPacker.new()
+	currentPack.pck_start("Mod.pck")
 	
 	#recursevely check the mod folder and find directories and files and place them in pack
-	var DirsToExplore : PackedStringArray = [execPath + mod_Folder_Name]
+	var DirsToExplore : PackedStringArray = [mod_Dir]
 	for g in DirsToExplore:
 		var dir = DirAccess.open(g)
 		if dir:
@@ -35,44 +91,54 @@ func _ready() -> void:
 			while file_name != "":
 				#if its a directory
 				if dir.current_is_dir():
-					var localDir = (g + "/" + file_name).replace(execPath + mod_Folder_Name + "/", "")
-					print("Found directory: " + localDir)
+					var localDir = (g + "/" + file_name).replace(mod_Dir + "/", "")
+					Log("Found directory: " + localDir)
 					
 					#check if dir should be ignored
 					if (ignores.CheckDir(localDir)):
 						DirsToExplore.append(g + "/" + file_name)
 					else:
-						printerr("Dir ignored: " + localDir)
+						Log("Dir ignored: " + localDir)
 				#if its a file
 				else:
 					#check if file should be ingored
 					if (ignores.CheckFile(file_name)):
 						var fileDir = g + "/" + file_name
-						var targetDir = fileDir.replace(execPath + mod_Folder_Name, "res:/")
-						packer.add_file(targetDir ,fileDir)
-						print("Placed file {0} to {1}".format([fileDir, targetDir]))
+						#var targetDir = fileDir.replace(execPath + mod_Folder_Name, "res:/")
+						#currentPack.add_file(targetDir ,fileDir)
+						#Log("Placed file {0} to {1}".format([fileDir, targetDir]))
+						filesToAdd.append(fileDir)
 					
 				file_name = dir.get_next()
-				
-	packer.flush(true)
-	
+
 ##Launch godot on the background to import all the resources and generate the import files
-func generate_Import_Files(mod_folder_path: String):
+func generate_Import_Files():
+	#check for godot exec
+	if not FileAccess.file_exists(GodotExec):
+		Log("Godot Editor binary missing from tool directory!")
+		return
+	if (mod_Dir == ""):
+		Log("Missing Mod Directory")
+		return
 	#arguments for executing godot
 	#1 headless and editor to open editor hidden
-	var import_args = [ "--headless",  "--editor","--path", mod_folder_path, "--quit"]
+	var import_args = [ "--headless",  "--editor","--path", mod_Dir, "--quit"]
+	
+	Log("Importing assets...")
 	
 	#create a basic project file for godot to use
-	ensure_project_godot_exists(mod_folder_path)
+	ensure_project_godot_exists(mod_Dir)
 	
 	#import assets to generate import files
 	var output = []
-	print("Importing assets...")
+	
 	var exit_code = OS.execute(GodotExec, import_args, output, true)
 	
 	if exit_code != 0:
 		push_error("Failed to import mod assets. Error logs: " + str(output))
 		return
+	else:
+		Log("Import Files Generated")
 
 
 func ensure_project_godot_exists(mod_path: String):
@@ -81,3 +147,42 @@ func ensure_project_godot_exists(mod_path: String):
 		var file = FileAccess.open(config_file_path, FileAccess.WRITE)
 		file.store_string("[config_version=5]\n\n[application]\nconfig/name=\"ModTemplate\"")
 		file.close()
+
+
+func _on_godot_exec_change_pressed() -> void:
+	var fileDiag : FileDialog = FileDialog.new()
+	fileDiag.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	fileDiag.filters = ["*.exe"]
+	fileDiag.use_native_dialog = true
+	fileDiag.access = FileDialog.ACCESS_FILESYSTEM
+	add_child(fileDiag)
+	fileDiag.popup_centered()
+	var f = await fileDiag.file_selected
+	if (FileAccess.file_exists(f)):
+		GodotExec = f
+		executable_Path_Label.text = GodotExec
+		Log("Godot Executable Path changed to {0}".format([f]))	
+
+
+func _on_generate_import_pressed() -> void:
+	generate_Import_Files()
+
+
+func _on_generate_pack_pressed() -> void:
+	if (currentPack != null):
+		return
+	GeneratePack()
+
+
+func _on_pack_path_pressed() -> void:
+	var fileDiag : FileDialog = FileDialog.new()
+	fileDiag.file_mode = FileDialog.FILE_MODE_OPEN_DIR
+	fileDiag.use_native_dialog = true
+	fileDiag.access = FileDialog.ACCESS_FILESYSTEM
+	add_child(fileDiag)
+	fileDiag.popup_centered()
+	var f = await fileDiag.dir_selected
+	if (DirAccess.dir_exists_absolute(f)):
+		mod_Dir = f
+		mod_Location_Label.text = f
+		Log("Mod Directory changed to {0}".format([f]))	
