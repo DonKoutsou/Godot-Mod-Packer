@@ -1,8 +1,10 @@
 [gd_scene format=3 uid="uid://byqe6jh8wbxy0"]
 
 [ext_resource type="Script" uid="uid://ikhimqfpe8tc" path="res://main.gd" id="1_glv2v"]
+[ext_resource type="Script" uid="uid://butxfrts4gdks" path="res://log.gd" id="2_uu6xs"]
+[ext_resource type="PackedScene" uid="uid://sf4cxl8op2tv" path="res://ResourcePicker.tscn" id="3_r0du0"]
 
-[node name="Control" type="Control" unique_id=2138693863 node_paths=PackedStringArray("mod_Location_Label", "executable_Path_Label", "log_Label")]
+[node name="Control" type="Control" unique_id=2138693863 node_paths=PackedStringArray("mod_Location", "exec_Path", "base_Pack", "log_Label")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -10,9 +12,10 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_glv2v")
-mod_Location_Label = NodePath("PanelContainer/HBoxContainer/VBoxContainer/PanelContainer3/VBoxContainer/PackLock")
-executable_Path_Label = NodePath("PanelContainer/HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/ExecutableLoc")
-log_Label = NodePath("PanelContainer/HBoxContainer/VBoxContainer2/PanelContainer/RichTextLabel")
+mod_Location = NodePath("PanelContainer/HBoxContainer/VBoxContainer/PanelContainer3/VBoxContainer/ModLoc")
+exec_Path = NodePath("PanelContainer/HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/GodotExec")
+base_Pack = NodePath("PanelContainer/HBoxContainer/VBoxContainer/PanelContainer4/VBoxContainer/basePack")
+log_Label = NodePath("PanelContainer/HBoxContainer/VBoxContainer2/PanelContainer/Log")
 
 [node name="PanelContainer" type="PanelContainer" parent="." unique_id=318287848]
 layout_mode = 1
@@ -38,11 +41,12 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="RichTextLabel" type="RichTextLabel" parent="PanelContainer/HBoxContainer/VBoxContainer2/PanelContainer" unique_id=299200300]
+[node name="Log" type="RichTextLabel" parent="PanelContainer/HBoxContainer/VBoxContainer2/PanelContainer" unique_id=299200300]
 layout_mode = 2
 size_flags_horizontal = 3
 bbcode_enabled = true
 scroll_following = true
+script = ExtResource("2_uu6xs")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer/HBoxContainer" unique_id=812695689]
 custom_minimum_size = Vector2(200, 0)
@@ -57,25 +61,12 @@ layout_mode = 2
 [node name="Label" type="Label" parent="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer" unique_id=345370568]
 layout_mode = 2
 theme_override_font_sizes/font_size = 22
-text = "Godot Executable Location"
+text = "Godot Executable"
 autowrap_mode = 2
 
-[node name="ExecutableLoc" type="Label" parent="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer" unique_id=1811795377]
+[node name="GodotExec" parent="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer" unique_id=316868228 instance=ExtResource("3_r0du0")]
 layout_mode = 2
-size_flags_vertical = 1
-text = "fhiehfioahfoahef ohea ofheifahowadwadwadwadwadwa"
-autowrap_mode = 1
-
-[node name="GodotExecChange" type="Button" parent="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer" unique_id=1193464112]
-layout_mode = 2
-text = "Change Executable Path"
-
-[node name="PanelContainer2" type="PanelContainer" parent="PanelContainer/HBoxContainer/VBoxContainer" unique_id=1273576630]
-layout_mode = 2
-
-[node name="GenerateImport" type="Button" parent="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer2" unique_id=1388774099]
-layout_mode = 2
-text = "Generate Import Files"
+resource_Tyoes = ["*.exe"]
 
 [node name="PanelContainer3" type="PanelContainer" parent="PanelContainer/HBoxContainer/VBoxContainer" unique_id=1919876734]
 layout_mode = 2
@@ -89,20 +80,36 @@ theme_override_font_sizes/font_size = 22
 text = "Mod Location"
 autowrap_mode = 2
 
-[node name="PackLock" type="Label" parent="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer3/VBoxContainer" unique_id=1918804314]
+[node name="ModLoc" parent="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer3/VBoxContainer" unique_id=923681851 instance=ExtResource("3_r0du0")]
 layout_mode = 2
-text = "wa dwad aw dwa d aw d  dwa d"
-autowrap_mode = 1
+resource_Type = 2
 
-[node name="PackPath" type="Button" parent="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer3/VBoxContainer" unique_id=314990778]
+[node name="PanelContainer4" type="PanelContainer" parent="PanelContainer/HBoxContainer/VBoxContainer" unique_id=975783714]
 layout_mode = 2
-text = "Change Pack Path"
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer4" unique_id=1442507519]
+layout_mode = 2
+
+[node name="Label3" type="Label" parent="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer4/VBoxContainer" unique_id=827018578]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Base Pack"
+autowrap_mode = 2
+
+[node name="basePack" parent="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer4/VBoxContainer" unique_id=735820284 instance=ExtResource("3_r0du0")]
+layout_mode = 2
+resource_Tyoes = ["*.pck"]
+
+[node name="GenerateImport" type="Button" parent="PanelContainer/HBoxContainer/VBoxContainer" unique_id=1388774099]
+layout_mode = 2
+text = "Generate Import Files"
 
 [node name="GeneratePack" type="Button" parent="PanelContainer/HBoxContainer/VBoxContainer" unique_id=186220417]
 layout_mode = 2
 text = "Generate Pack"
 
-[connection signal="pressed" from="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/GodotExecChange" to="." method="_on_godot_exec_change_pressed"]
-[connection signal="pressed" from="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer2/GenerateImport" to="." method="_on_generate_import_pressed"]
-[connection signal="pressed" from="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer3/VBoxContainer/PackPath" to="." method="_on_pack_path_pressed"]
+[connection signal="Changed" from="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/GodotExec" to="." method="_on_godot_exec_changed"]
+[connection signal="Changed" from="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer3/VBoxContainer/ModLoc" to="." method="_on_mod_loc_changed"]
+[connection signal="Changed" from="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer4/VBoxContainer/basePack" to="." method="_on_base_pack_changed"]
+[connection signal="pressed" from="PanelContainer/HBoxContainer/VBoxContainer/GenerateImport" to="." method="_on_generate_import_pressed"]
 [connection signal="pressed" from="PanelContainer/HBoxContainer/VBoxContainer/GeneratePack" to="." method="_on_generate_pack_pressed"]

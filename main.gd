@@ -2,82 +2,79 @@ extends Control
 
 class_name Main
 
-@export var mod_Location_Label : Label
-@export var executable_Path_Label : Label
-@export var log_Label : RichTextLabel
+@export var mod_Location : ResourcePicker
+@export var exec_Path : ResourcePicker
+@export var base_Pack : ResourcePicker
+@export var log_Label : Log
 
-
+##Location of base games pack location
 var basePackPath : String
+##Location for the mod to be packed
 var mod_Dir : String
+##Location to the godot editor executable
 var GodotExec : String = "D:/Godot/Godot_v4.7-stable_win64.exe/Godot_v4.7-stable_win64.exe"
 
+##Quwuw for files to be added to pack
 var filesToAdd : PackedStringArray
+##Current pack being generated
 var currentPack : PCKPacker
+
 
 var execPath
 
-var savedLog : PackedStringArray
+
 var ignores : Ignores
 
+#--------------------------------------------------------------
 func _ready() -> void:
 	execPath = OS.get_executable_path()
 	execPath = execPath.replace(execPath.get_file(), "")
-	executable_Path_Label.text = GodotExec
-	mod_Location_Label.text = mod_Dir
+	exec_Path.SetFile(GodotExec)
+	mod_Location.SetFile(mod_Dir)
+	base_Pack.SetFile(basePackPath)
 	
 	#save ignores in file for user to adjust
 	if not FileAccess.file_exists(execPath + "Packer_Ignores.tres"):
 		ResourceSaver.save(load("res://Ignores.tres"), execPath + "Packer_Ignores.tres")
 	
-	Log("Ignore table loaded.\nIgnoring :")
+	log_Label.Log("Ignore table loaded.\nIgnoring :")
 	ignores = ResourceLoader.load(execPath + "Packer_Ignores.tres")
-	Log("Files:")
+	log_Label.Log("Files:")
 	for g in ignores.ignored_Files:
-		Log("    " + g)
-	Log("Types:")
+		log_Label.Log("    " + g)
+	log_Label.Log("Types:")
 	for g in ignores.ignored_Types:
-		Log("    ." + g)
-	Log("Directories:")
+		log_Label.Log("    ." + g)
+	log_Label.Log("Directories:")
 	for g in ignores.ignored_Dirs:
-		Log("    " + g)
+		log_Label.Log("    " + g)
 	
-	
-
+#--------------------------------------------------------------
 func _process(_delta: float) -> void:
 	if (filesToAdd.size() > 0):
 		var next = filesToAdd[0]
 		filesToAdd.remove_at(0)
 		addFile(next)
-		printLog()
+		
 	else: if (currentPack != null):
 		currentPack.flush(true)
 		currentPack = null
-		Log("Pack Generated in location {0}".format([execPath]))
+		log_Label.Log("Pack Generated in location {0}".format([execPath]))
 
-func printLog() -> void:
-	var t : String = ""
-	for g in savedLog:
-		t += "\n" + g
-	log_Label.text = t
-	
-func Log(t : String) -> void:
-	savedLog.append(t)
-	printLog()
 
-func ClearLog() -> void:
-	savedLog.clear()
-	printLog()
 
 func addFile(file : String) -> void:
 	var targetDir = file.replace(mod_Dir, "res:/")
 	currentPack.add_file(targetDir ,file)
-	Log("Placed file {0} to {1}".format([file, targetDir]))
+	log_Label.Log("Placed file {0} to {1}".format([file, targetDir]))
 	
 
 func GeneratePack() -> void:
 	if (mod_Dir == ""):
-		Log("Missing Mod Directory")
+		log_Label.Log("Missing Mod Directory")
 		return
+	
+	log_Label.Log("Generating Pack...")
 	#start creating pack
 	currentPack = PCKPacker.new()
 	currentPack.pck_start("Mod.pck")
@@ -93,13 +90,13 @@ func GeneratePack() -> void:
 				#if its a directory
 				if dir.current_is_dir():
 					var localDir = (g + "/" + file_name).replace(mod_Dir + "/", "")
-					Log("Found directory: " + localDir)
+					log_Label.Log("Found directory: " + localDir)
 					
 					#check if dir should be ignored
 					if (ignores.CheckDir(localDir)):
 						DirsToExplore.append(g + "/" + file_name)
 					else:
-						Log("Dir ignored: " + localDir)
+						log_Label.Log("Dir ignored: " + localDir)
 				#if its a file
 				else:
 					#check if file should be ingored
@@ -114,7 +111,7 @@ func GeneratePack() -> void:
 
 func GeneratePackInt() -> void:
 	if (mod_Dir == ""):
-		Log("Missing Mod Directory")
+		log_Label.Log("Missing Mod Directory")
 		return
 
 	ensure_project_godot_exists(mod_Dir)
@@ -135,28 +132,28 @@ func GeneratePackInt() -> void:
 			"--export-pack", "PackerDefault", execPath + "/Mod.pck"
 		]
 	
-	print("Packing into PCK...")
+	log_Label.Log("Packing into PCK...")
 	var exit_code = OS.execute(GodotExec, pack_args, output, true)
 	
 	if exit_code == 0:
-		print("Mod pack successfully created at: ", execPath)
+		log_Label.Log("Mod pack successfully created at: " + execPath)
 	else:
-		push_error("Packing failed. Error logs: " + str(output))
+		log_Label.Log("Packing failed. Error logs: " + str(output))
 
 ##Launch godot on the background to import all the resources and generate the import files
 func generate_Import_Files():
 	#check for godot exec
 	if not FileAccess.file_exists(GodotExec):
-		Log("Godot Editor binary missing from tool directory!")
+		log_Label.Log("Godot Editor binary missing from tool directory!")
 		return
 	if (mod_Dir == ""):
-		Log("Missing Mod Directory")
+		log_Label.Log("Missing Mod Directory")
 		return
 	#arguments for executing godot
 	#1 headless and editor to open editor hidden
 	var import_args = [ "--headless",  "--editor","--path", mod_Dir, "--quit"]
 	
-	Log("Importing assets...")
+	log_Label.Log("Importing assets...")
 	
 	#create a basic project file for godot to use
 	ensure_project_godot_exists(mod_Dir)
@@ -170,7 +167,7 @@ func generate_Import_Files():
 		push_error("Failed to import mod assets. Error logs: " + str(output))
 		return
 	else:
-		Log("Import Files Generated")
+		log_Label.Log("Import Files Generated")
 
 
 func ensure_project_godot_exists(mod_path: String):
@@ -224,21 +221,18 @@ func ensure_project_godot_exists(mod_path: String):
 		file.store_string(preset_template.strip_edges())
 		file.close()
 
+func _on_godot_exec_changed(t: String) -> void:
+	GodotExec = t
+	log_Label.Log("Godot Executable Path changed to {0}".format([t]))	
 
-func _on_godot_exec_change_pressed() -> void:
-	var fileDiag : FileDialog = FileDialog.new()
-	fileDiag.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	fileDiag.filters = ["*.exe"]
-	fileDiag.use_native_dialog = true
-	fileDiag.access = FileDialog.ACCESS_FILESYSTEM
-	add_child(fileDiag)
-	fileDiag.popup_centered()
-	var f = await fileDiag.file_selected
-	if (FileAccess.file_exists(f)):
-		GodotExec = f
-		executable_Path_Label.text = GodotExec
-		Log("Godot Executable Path changed to {0}".format([f]))	
 
+func _on_mod_loc_changed(t: String) -> void:
+	mod_Dir = t
+	log_Label.Log("Mod Directory changed to {0}".format([t]))
+
+func _on_base_pack_changed(t: String) -> void:
+	basePackPath = t
+	log_Label.Log("Base pack path changed to {0}".format([t]))
 
 func _on_generate_import_pressed() -> void:
 	generate_Import_Files()
@@ -248,17 +242,3 @@ func _on_generate_pack_pressed() -> void:
 	if (currentPack != null):
 		return
 	GeneratePackInt()
-
-
-func _on_pack_path_pressed() -> void:
-	var fileDiag : FileDialog = FileDialog.new()
-	fileDiag.file_mode = FileDialog.FILE_MODE_OPEN_DIR
-	fileDiag.use_native_dialog = true
-	fileDiag.access = FileDialog.ACCESS_FILESYSTEM
-	add_child(fileDiag)
-	fileDiag.popup_centered()
-	var f = await fileDiag.dir_selected
-	if (DirAccess.dir_exists_absolute(f)):
-		mod_Dir = f
-		mod_Location_Label.text = f
-		Log("Mod Directory changed to {0}".format([f]))	
