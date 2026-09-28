@@ -108,8 +108,13 @@ text = "Generate Import Files"
 layout_mode = 2
 text = "Generate Pack"
 
+[node name="Button" type="Button" parent="PanelContainer/HBoxContainer/VBoxContainer" unique_id=485174321]
+layout_mode = 2
+text = "Unpack Game"
+
 [connection signal="Changed" from="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/GodotExec" to="." method="_on_godot_exec_changed"]
 [connection signal="Changed" from="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer3/VBoxContainer/ModLoc" to="." method="_on_mod_loc_changed"]
 [connection signal="Changed" from="PanelContainer/HBoxContainer/VBoxContainer/PanelContainer4/VBoxContainer/basePack" to="." method="_on_base_pack_changed"]
 [connection signal="pressed" from="PanelContainer/HBoxContainer/VBoxContainer/GenerateImport" to="." method="_on_generate_import_pressed"]
 [connection signal="pressed" from="PanelContainer/HBoxContainer/VBoxContainer/GeneratePack" to="." method="_on_generate_pack_pressed"]
+[connection signal="pressed" from="PanelContainer/HBoxContainer/VBoxContainer/Button" to="." method="_on_button_pressed"]

@@ -169,6 +169,128 @@ func generate_Import_Files():
 	else:
 		log_Label.Log("Import Files Generated")
 
+func unpack_pck_to_disk(pck_path: String, output_dir: String) -> void:
+	# 1. Mount the external PCK file into Godot's virtual filesystem
+	var success = ProjectSettings.load_resource_pack(pck_path)
+	if not success:
+		print("Failed to load or mount the PCK file.")
+		return
+	
+	print("PCK successfully mounted. Starting recursive extraction...")
+	
+	# 2. Start the recursive extraction process from the root virtual directory
+	_extract_directory_recursive("res://", output_dir)
+	print("Extraction complete!")
+
+# This internal helper function calls itself whenever it finds a subdirectory
+func _extract_directory_recursive(virtual_dir_path: String, local_dir_path: String) -> void:
+	# Ensure the local directory exists on the physical hard drive
+	var da = DirAccess.open("user://") # fallback baseline pointer
+	if not da.dir_exists(local_dir_path):
+		var make_dir_err = da.make_dir_recursive(local_dir_path)
+		if make_dir_err != OK:
+			print("Failed to create local directory: ", local_dir_path)
+			return
+
+	# Open the virtual folder inside the mounted PCK
+	var res_dir = DirAccess.open(virtual_dir_path)
+	if not res_dir:
+		print("Could not open virtual directory: ", virtual_dir_path)
+		return
+		
+	res_dir.list_dir_begin()
+	var item_name = res_dir.get_next()
+	
+	while item_name != "":
+		# Ignore navigation links
+		if item_name == "." or item_name == "..":
+			item_name = res_dir.get_next()
+			continue
+			
+		var next_virtual_path = virtual_dir_path.path_join(item_name)
+		var next_local_path = local_dir_path.path_join(item_name)
+		
+		if res_dir.current_is_dir():
+			# 3. IF IT'S A DIRECTORY: Recursively enter it
+			_extract_directory_recursive(next_virtual_path, next_local_path)
+		else:
+			if (ignores.CheckFile(next_virtual_path.get_file())):
+				if next_virtual_path.ends_with(".import"):
+					HandleImportFile(next_virtual_path, next_local_path)
+				if next_virtual_path.ends_with(".remap"):
+					HandleRemapFile(next_virtual_path, next_local_path)
+				# 4. IF IT'S A FILE: Read from virtual memory and write to disk
+				var file_read = FileAccess.open(next_virtual_path, FileAccess.READ)
+				if file_read:
+					var file_data = file_read.get_buffer(file_read.get_length())
+					file_read.close()
+					
+					var file_write = FileAccess.open(next_local_path, FileAccess.WRITE)
+					if file_write:
+						file_write.store_buffer(file_data)
+						file_write.close()
+						print("Extracted file: ", next_virtual_path)
+					else:
+						print("Error writing physical file: ", next_local_path)
+				else:
+					print("Error reading virtual file: ", next_virtual_path)
+				
+		item_name = res_dir.get_next()
+		
+	res_dir.list_dir_end()
+
+func HandleImportFile(path : String, localPath : String) -> void:
+	var targetPath = get_target_path_from_import(path)
+
+	var tex = load(targetPath) as Texture2D
+	if tex:
+		var saveLoc = localPath.get_basename()
+		var img : Image = tex.get_image()
+		img.save_png(saveLoc) # Saves as a perfectly clean .png file
+		print("Restored original texture: ", saveLoc)
+
+func HandleRemapFile(path : String, localPath : String) -> void:
+	var targetPath = get_target_path_from_remap(path)
+	var saveLoc = localPath.get_basename()
+	
+	var script = load(targetPath)
+	ResourceSaver.save(script, saveLoc)
+
+func get_target_path_from_remap(remap_file_path: String) -> String:
+	var config = ConfigFile.new()
+	var err = config.load(remap_file_path)
+	
+	if err == OK:
+		# Check if the [remap] section has the "path" property
+		if config.has_section_key("remap", "path"):
+			var internal_binary_path = config.get_value("remap", "path")
+			return internal_binary_path # Returns something like "res://.godot/exported/..."
+	
+	print("Failed to parse remap file: ", remap_file_path)
+	return ""
+
+func get_target_path_from_import(import_file_path: String) -> String:
+	var config = ConfigFile.new()
+	var err = config.load(import_file_path)
+	
+	if err == OK:
+		# Check the [remap] section for the compiled binary path
+		if config.has_section_key("remap", "path"):
+			var compiled_path = config.get_value("remap", "path")
+			return compiled_path # Returns e.g. "res://.godot/imported/player.png-4b2a3f...ctex"
+			
+		if config.has_section_key("remap", "path.bptc"):
+			var compiled_path = config.get_value("remap", "path.bptc")
+			return compiled_path 
+			
+		# Fallback: Some files use 'dest_files' array for multiple variants
+		if config.has_section_key("remap", "dest_files"):
+			var dest_files = config.get_value("remap", "dest_files")
+			if dest_files is Array and dest_files.size() > 0:
+				return dest_files[0]
+				
+	print("Failed to read import layout: ", import_file_path)
+	return ""
 
 func ensure_project_godot_exists(mod_path: String):
 	# 1. Ensure project.godot exists
@@ -242,3 +364,11 @@ func _on_generate_pack_pressed() -> void:
 	if (currentPack != null):
 		return
 	GeneratePackInt()
+
+
+func _on_button_pressed() -> void:
+	if (basePackPath == "" or !FileAccess.file_exists(basePackPath)):
+		log_Label.Log("Wrong Base Pack")
+		
+	DirAccess.make_dir_absolute(execPath + "Unpacked")
+	unpack_pck_to_disk(basePackPath, execPath + "Unpacked")
