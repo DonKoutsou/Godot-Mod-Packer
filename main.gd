@@ -5,7 +5,6 @@ class_name Main
 @export var mod_Location : ResourcePicker
 @export var exec_Path : ResourcePicker
 @export var base_Pack : ResourcePicker
-@export var log_Label : Log
 
 ##Location of base games pack location
 var basePackPath : String
@@ -37,17 +36,17 @@ func _ready() -> void:
 	if not FileAccess.file_exists(execPath + "Packer_Ignores.tres"):
 		ResourceSaver.save(load("res://Ignores.tres"), execPath + "Packer_Ignores.tres")
 	
-	log_Label.Log("Ignore table loaded.\nIgnoring :")
+	print("Ignore table loaded.\nIgnoring :")
 	ignores = ResourceLoader.load(execPath + "Packer_Ignores.tres")
-	log_Label.Log("Files:")
+	print("Files:")
 	for g in ignores.ignored_Files:
-		log_Label.Log("    " + g)
-	log_Label.Log("Types:")
+		print("    " + g)
+	print("Types:")
 	for g in ignores.ignored_Types:
-		log_Label.Log("    ." + g)
-	log_Label.Log("Directories:")
+		print("    ." + g)
+	print("Directories:")
 	for g in ignores.ignored_Dirs:
-		log_Label.Log("    " + g)
+		print("    " + g)
 	
 #--------------------------------------------------------------
 func _process(_delta: float) -> void:
@@ -59,22 +58,22 @@ func _process(_delta: float) -> void:
 	else: if (currentPack != null):
 		currentPack.flush(true)
 		currentPack = null
-		log_Label.Log("Pack Generated in location {0}".format([execPath]))
+		print("Pack Generated in location {0}".format([execPath]))
 
 
 
 func addFile(file : String) -> void:
 	var targetDir = file.replace(mod_Dir, "res:/")
 	currentPack.add_file(targetDir ,file)
-	log_Label.Log("Placed file {0} to {1}".format([file, targetDir]))
+	print("Placed file {0} to {1}".format([file, targetDir]))
 	
 
 func GeneratePack() -> void:
 	if (mod_Dir == ""):
-		log_Label.Log("Missing Mod Directory")
+		print("Missing Mod Directory")
 		return
 	
-	log_Label.Log("Generating Pack...")
+	print("Generating Pack...")
 	#start creating pack
 	currentPack = PCKPacker.new()
 	currentPack.pck_start("Mod.pck")
@@ -90,13 +89,13 @@ func GeneratePack() -> void:
 				#if its a directory
 				if dir.current_is_dir():
 					var localDir = (g + "/" + file_name).replace(mod_Dir + "/", "")
-					log_Label.Log("Found directory: " + localDir)
+					print("Found directory: " + localDir)
 					
 					#check if dir should be ignored
 					if (ignores.CheckDir(localDir)):
 						DirsToExplore.append(g + "/" + file_name)
 					else:
-						log_Label.Log("Dir ignored: " + localDir)
+						print("Dir ignored: " + localDir)
 				#if its a file
 				else:
 					#check if file should be ingored
@@ -111,7 +110,7 @@ func GeneratePack() -> void:
 
 func GeneratePackInt() -> void:
 	if (mod_Dir == ""):
-		log_Label.Log("Missing Mod Directory")
+		print("Missing Mod Directory")
 		return
 
 	ensure_project_godot_exists(mod_Dir)
@@ -132,28 +131,28 @@ func GeneratePackInt() -> void:
 			"--export-pack", "PackerDefault", execPath + "/Mod.pck"
 		]
 	
-	log_Label.Log("Packing into PCK...")
+	print("Packing into PCK...")
 	var exit_code = OS.execute(GodotExec, pack_args, output, true)
 	
 	if exit_code == 0:
-		log_Label.Log("Mod pack successfully created at: " + execPath)
+		print("Mod pack successfully created at: " + execPath)
 	else:
-		log_Label.Log("Packing failed. Error logs: " + str(output))
+		print("Packing failed. Error logs: " + str(output))
 
 ##Launch godot on the background to import all the resources and generate the import files
 func generate_Import_Files():
 	#check for godot exec
 	if not FileAccess.file_exists(GodotExec):
-		log_Label.Log("Godot Editor binary missing from tool directory!")
+		print("Godot Editor binary missing from tool directory!")
 		return
 	if (mod_Dir == ""):
-		log_Label.Log("Missing Mod Directory")
+		print("Missing Mod Directory")
 		return
 	#arguments for executing godot
 	#1 headless and editor to open editor hidden
 	var import_args = [ "--headless",  "--editor","--path", mod_Dir, "--quit"]
 	
-	log_Label.Log("Importing assets...")
+	print("Importing assets...")
 	
 	#create a basic project file for godot to use
 	ensure_project_godot_exists(mod_Dir)
@@ -167,7 +166,7 @@ func generate_Import_Files():
 		push_error("Failed to import mod assets. Error logs: " + str(output))
 		return
 	else:
-		log_Label.Log("Import Files Generated")
+		print("Import Files Generated")
 
 func unpack_pck_to_disk(pck_path: String, output_dir: String) -> void:
 	# 1. Mount the external PCK file into Godot's virtual filesystem
@@ -250,11 +249,18 @@ func HandleImportFile(path : String, localPath : String) -> void:
 		print("Restored original texture: ", saveLoc)
 
 func HandleRemapFile(path : String, localPath : String) -> void:
+	#get the path the remap points to
 	var targetPath = get_target_path_from_remap(path)
+	
+	#remove the .remap
 	var saveLoc = localPath.get_basename()
 	
-	var script = load(targetPath)
-	ResourceSaver.save(script, saveLoc)
+	if (saveLoc.ends_with(".tscn") or saveLoc.ends_with(".gdc")):
+		return
+	#load resource and save it
+	var resource = load(targetPath)
+	ResourceSaver.save(resource, saveLoc)
+	print("Generated Resoure {0} from {1}".format([targetPath.get_file(), path.get_file()]))
 
 func get_target_path_from_remap(remap_file_path: String) -> String:
 	var config = ConfigFile.new()
@@ -345,16 +351,16 @@ func ensure_project_godot_exists(mod_path: String):
 
 func _on_godot_exec_changed(t: String) -> void:
 	GodotExec = t
-	log_Label.Log("Godot Executable Path changed to {0}".format([t]))	
+	print("Godot Executable Path changed to {0}".format([t]))	
 
 
 func _on_mod_loc_changed(t: String) -> void:
 	mod_Dir = t
-	log_Label.Log("Mod Directory changed to {0}".format([t]))
+	print("Mod Directory changed to {0}".format([t]))
 
 func _on_base_pack_changed(t: String) -> void:
 	basePackPath = t
-	log_Label.Log("Base pack path changed to {0}".format([t]))
+	print("Base pack path changed to {0}".format([t]))
 
 func _on_generate_import_pressed() -> void:
 	generate_Import_Files()
@@ -368,7 +374,7 @@ func _on_generate_pack_pressed() -> void:
 
 func _on_button_pressed() -> void:
 	if (basePackPath == "" or !FileAccess.file_exists(basePackPath)):
-		log_Label.Log("Wrong Base Pack")
+		print("Wrong Base Pack")
 		
 	DirAccess.make_dir_absolute(execPath + "Unpacked")
 	unpack_pck_to_disk(basePackPath, execPath + "Unpacked")
