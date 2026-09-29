@@ -21,6 +21,7 @@ func _on_change_pressed() -> void:
 	fileDiag.filters = resource_Tyoes
 	fileDiag.use_native_dialog = true
 	fileDiag.access = FileDialog.ACCESS_FILESYSTEM
+	fileDiag.current_path = selected
 	add_child(fileDiag)
 	fileDiag.popup_centered()
 	var f
