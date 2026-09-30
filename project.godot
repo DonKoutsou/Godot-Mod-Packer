@@ -11,14 +11,16 @@ config_version=5
 [application]
 
 config/name="Packer"
+config/version="0.1"
 run/main_scene="uid://byqe6jh8wbxy0"
 config/features=PackedStringArray("4.7", "Forward Plus")
-config/icon="res://icon.svg"
+config/icon="uid://d3npk3y8skrtq"
+config/windows_native_icon="res://PackerData/Assets/LogoIc.ico"
 
 [display]
 
-window/size/viewport_width=200
-window/size/viewport_height=400
+window/size/viewport_width=300
+window/size/viewport_height=600
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 

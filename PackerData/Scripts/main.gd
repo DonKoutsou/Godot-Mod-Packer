@@ -5,18 +5,12 @@ class_name Main
 @export var mod_Location : ResourcePicker
 @export var exec_Path : ResourcePicker
 @export var base_Pack : ResourcePicker
-
-##Quwuw for files to be added to pack
-var filesToAdd : PackedStringArray
-##Current pack being generated
-var currentPack : PCKPacker
-
+@export var unpacked_base : ResourcePicker
 
 var execPath
 
-
-var ignores : Ignores
-var dirs : SaveDirs
+static var ignores : Ignores
+static var dirs : SaveDirs
 
 #--------------------------------------------------------------
 func _ready() -> void:
@@ -25,7 +19,7 @@ func _ready() -> void:
 
 	#save ignores in file for user to adjust
 	if not FileAccess.file_exists(execPath + "Packer_Ignores.tres"):
-		ResourceSaver.save(load("res://Ignores.tres"), execPath + "Packer_Ignores.tres")
+		ResourceSaver.save(load("res://PackerData/Resources/Ignores.tres"), execPath + "Packer_Ignores.tres")
 	
 	if not FileAccess.file_exists(execPath + "SavedDir.tres"):
 		ResourceSaver.save(SaveDirs.new(), execPath + "SavedDir.tres")
@@ -47,34 +41,41 @@ func _ready() -> void:
 	exec_Path.SetFile(dirs.ExecDir)
 	mod_Location.SetFile(dirs.ModDir)
 	base_Pack.SetFile(dirs.BaseDataDir)
+	unpacked_base.SetFile(dirs.UnpackedDataDir)
 
 #--------------------------------------------------------------
-func GeneratePackInt() -> void:
+func GeneratePack() -> void:
 	if (dirs.ModDir == ""):
-		print("Missing Mod Directory")
+		printerr("Missing Mod Directory")
 		return
-
-	ensure_project_godot_exists(dirs.ModDir)
+	if (dirs.UnpackedDataDir == ""):
+		printerr("Missing Unpacked Game Data")
+		return
 	
+	print("--------- Generating Project Dif ---------")
+	Helper._build_diff(dirs.ModDir, dirs.ModDir, dirs.UnpackedDataDir, execPath + "Dif", [])
+	
+	if (!DirAccess.dir_exists_absolute(execPath + "Dif")):
+		printerr("No differances found in files, opearation Canceled")
+		return
+		
+	ensure_project_godot_exists(execPath + "Dif")
+	print("--------- Project Dif Created ---------")
+
+	var modFileName = "/{0}.pck".format([dirs.ModDir.get_file()])
 	var output = []
 
-	var pack_args = []
-	if (dirs.BaseDataDir != ""):
-		pack_args = [
-			"--headless", 
-			"--path", dirs.ModDir, 
-			"--export-patch", "Windows", execPath + "/Mod.pck", # Changed from --export-pack
-			"--patches", dirs.BaseDataDir
-		]
-	else:
-		pack_args = [
-			"--headless", 
-			"--path", dirs.ModDir, 
-			"--export-pack", "Windows", execPath + "/Mod.pck"
-		]
+	var pack_args = [
+		"--headless", 
+		"--path", execPath + "Dif",
+		"--export-pack", "Windows", execPath + modFileName
+	]
 	
 	print("Packing into PCK...")
 	var exit_code = OS.execute(dirs.ExecDir, pack_args, output, true)
+
+	print("--------- Cleaning Up Dif ---------")
+	Helper.DeleteDirectoryRecursive(execPath + "Dif")
 	
 	if exit_code == 0:
 		print("Mod pack successfully created at: " + execPath)
@@ -112,17 +113,20 @@ func generate_Import_Files():
 		print("Import Files Generated")
 
 #--------------------------------------------------------------
-func unpack_pck_to_disk(pck_path: String, output_dir: String) -> void:
+func unpack_pck_to_disk() -> void:
+	var output_dir = dirs.BaseDataDir.replace(dirs.BaseDataDir.get_file(), "") + "Unpacked"
+	unpacked_base.SetFile(output_dir)
+	_on_unpacked_base_changed(output_dir)
+	
+	Helper.DeleteDirectoryRecursive(output_dir)
 	# 1. Mount the external PCK file into Godot's virtual filesystem
-	var success = ProjectSettings.load_resource_pack(pck_path)
+	var success = ProjectSettings.load_resource_pack(dirs.BaseDataDir)
 	if not success:
 		print("Failed to load or mount the PCK file.")
 		return
 	
 	print("PCK successfully mounted. Starting recursive extraction...")
-	
-	
-	
+
 	# 2. Start the recursive extraction process from the root virtual directory
 	_extract_directory_recursive("res://", output_dir)
 	
@@ -160,8 +164,9 @@ func _extract_directory_recursive(virtual_dir_path: String, local_dir_path: Stri
 		var next_local_path = local_dir_path.path_join(item_name)
 		
 		if res_dir.current_is_dir():
-			# 3. IF IT'S A DIRECTORY: Recursively enter it
-			_extract_directory_recursive(next_virtual_path, next_local_path)
+			if (ignores.CheckDir(next_virtual_path.replace("res://", ""))):
+				# 3. IF IT'S A DIRECTORY: Recursively enter it
+				_extract_directory_recursive(next_virtual_path, next_local_path)
 		else:
 			if (ignores.CheckFile(next_virtual_path.get_file())):
 				
@@ -197,12 +202,29 @@ func HandleImportFile(path : String, localPath : String) -> void:
 	var targetPath = Helper.get_target_path_from_import(path)
 
 	var tex = load(targetPath) as Texture2D
+	var saveLoc = localPath.get_basename()
 	if tex:
-		var saveLoc = localPath.get_basename()
-		var img : Image = tex.get_image()
-		img.save_png(saveLoc) # Saves as a perfectly clean .png file
-		print("Restored original texture: ", saveLoc)
 
+		var format = tex.get_format()
+		
+		if (format >= Image.Format.FORMAT_MAX):
+			DirAccess.remove_absolute(localPath)
+			printerr("Failed to restor original texture ", saveLoc)
+			printerr("Failed format = ", format)
+			return
+			
+		var img : Image = tex.get_image()
+		if (img == null or img.is_empty() or format >= Image.Format.FORMAT_MAX):
+			DirAccess.remove_absolute(localPath)
+			printerr("Failed to restor original texture ", saveLoc)
+			printerr("Failed format = ", format)
+		else:
+			img.save_png(saveLoc) # Saves as a perfectly clean .png file
+			print("Restored original texture: | Format {0}".format([format]), saveLoc)
+	else:
+		DirAccess.remove_absolute(localPath)
+		printerr("Failed to restor original texture ", saveLoc)
+		
 #--------------------------------------------------------------
 func HandleRemapFile(path : String, localPath : String) -> void:
 	#get the path the remap points to
@@ -244,7 +266,7 @@ func ensure_project_godot_exists(mod_path: String):
 			var patch_list_str = 'PackedStringArray("%s")' % dirs.BaseDataDir
 		
 			preset_template = """[preset.0]
-			name="PackerDefault"
+			name="Windows"
 			platform="Windows Desktop"
 			runnable=false
 			dedicated_server=false
@@ -296,79 +318,30 @@ func _on_base_pack_changed(t: String) -> void:
 	print("Base pack path changed to {0}".format([t]))
 
 #--------------------------------------------------------------
+func _on_unpacked_base_changed(t: String) -> void:
+	dirs.UnpackedDataDir = t
+	ResourceSaver.save(dirs, execPath + "SavedDir.tres")
+	print("Unpacked data pack path changed to {0}".format([t]))
+	
+#--------------------------------------------------------------
 func _on_generate_import_pressed() -> void:
-	generate_Import_Files()
+	if (dirs.ModDir == ""):
+		printerr("Missing Mod Dir")
+		return
+	var diag = ConfirmationDialog.new()
+	add_child(diag)
+	diag.mode = Window.MODE_FULLSCREEN
+	diag.dialog_text = "Generate Mod Pack?"
+	diag.popup_centered()
+	diag.confirmed.connect(generate_Import_Files)
 
 #--------------------------------------------------------------
 func _on_generate_pack_pressed() -> void:
-	if (currentPack != null):
-		return
-	GeneratePackInt()
-
+	GeneratePack()
+	
 #--------------------------------------------------------------
 func _on_button_pressed() -> void:
 	if (dirs.BaseDataDir == "" or !FileAccess.file_exists(dirs.BaseDataDir)):
-		print("Wrong Base Pack")
-		
-	DirAccess.make_dir_absolute(execPath + "Unpacked")
-	unpack_pck_to_disk(dirs.BaseDataDir, execPath + "Unpacked")
-
-#--------------------------------------------------------------
-#func _process(_delta: float) -> void:
-	#if (filesToAdd.size() > 0):
-		#var next = filesToAdd[0]
-		#filesToAdd.remove_at(0)
-		#addFile(next)
-		#
-	#else: if (currentPack != null):
-		#currentPack.flush(true)
-		#currentPack = null
-		#print("Pack Generated in location {0}".format([execPath]))
-#
-#
-#
-#func addFile(file : String) -> void:
-	#var targetDir = file.replace(mod_Dir, "res:/")
-	#currentPack.add_file(targetDir ,file)
-	#print("Placed file {0} to {1}".format([file, targetDir]))
-	#
-#
-#func GeneratePack() -> void:
-	#if (mod_Dir == ""):
-		#print("Missing Mod Directory")
-		#return
-	#
-	#print("Generating Pack...")
-	##start creating pack
-	#currentPack = PCKPacker.new()
-	#currentPack.pck_start("Mod.pck")
-	#
-	##recursevely check the mod folder and find directories and files and place them in pack
-	#var DirsToExplore : PackedStringArray = [mod_Dir]
-	#for g in DirsToExplore:
-		#var dir = DirAccess.open(g)
-		#if dir:
-			#dir.list_dir_begin()
-			#var file_name = dir.get_next()
-			#while file_name != "":
-				##if its a directory
-				#if dir.current_is_dir():
-					#var localDir = (g + "/" + file_name).replace(mod_Dir + "/", "")
-					#print("Found directory: " + localDir)
-					#
-					##check if dir should be ignored
-					#if (ignores.CheckDir(localDir)):
-						#DirsToExplore.append(g + "/" + file_name)
-					#else:
-						#print("Dir ignored: " + localDir)
-				##if its a file
-				#else:
-					##check if file should be ingored
-					#if (ignores.CheckFile(file_name)):
-						#var fileDir = g + "/" + file_name
-						##var targetDir = fileDir.replace(execPath + mod_Folder_Name, "res:/")
-						##currentPack.add_file(targetDir ,fileDir)
-						##Log("Placed file {0} to {1}".format([fileDir, targetDir]))
-						#filesToAdd.append(fileDir)
-					#
-				#file_name = dir.get_next()
+		printerr("Wrong Base Pack")
+	
+	unpack_pck_to_disk()

@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://sf4cxl8op2tv"]
 
-[ext_resource type="Script" uid="uid://bb5uuqm3773pr" path="res://resource_picker.gd" id="1_sk7mg"]
-[ext_resource type="Texture2D" uid="uid://0us6ou2s47e2" path="res://Assets/open-folder.png" id="2_tldq8"]
+[ext_resource type="Script" uid="uid://bb5uuqm3773pr" path="res://PackerData/Scripts/resource_picker.gd" id="1_sk7mg"]
+[ext_resource type="Texture2D" uid="uid://0us6ou2s47e2" path="res://PackerData/Assets/open-folder.png" id="2_tldq8"]
 
 [node name="ResourcePicker" type="PanelContainer" unique_id=316868228 node_paths=PackedStringArray("locationText")]
 anchors_preset = 15

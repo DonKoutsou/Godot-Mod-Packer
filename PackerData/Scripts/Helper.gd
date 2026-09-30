@@ -50,7 +50,8 @@ static func reconstruct_all_uid_files(local_unpacked_root_dir: String) -> void:
 		# 4. Locate the path destination inside your local extraction directory
 		var relative_path = virtual_path.trim_prefix("res://")
 		var local_file_path = local_unpacked_root_dir.path_join(relative_path)
-		
+		if (FileAccess.file_exists(local_file_path + ".import")):
+			continue
 		# 5. Append the .uid extension suffix (e.g., music_manager.gd.uid)
 		var target_uid_file_path = local_file_path + ".uid"
 		
@@ -92,8 +93,7 @@ static func get_target_path_from_import(import_file_path: String) -> String:
 	return ""
 
 static func run_opengds_decompiler(gdc_physical_path: String) -> void:
-	print("Trying to decompile {0}".format([gdc_physical_path]))
-	
+
 	# 1. OS.get_executable_path().get_base_dir() finds the folder where your game is running on disk
 	var base_dir = OS.get_executable_path().get_base_dir()
 	var opengds_path = base_dir.path_join("OpenGDS.py")
@@ -129,6 +129,160 @@ static func run_opengds_decompiler(gdc_physical_path: String) -> void:
 			print("Failed to save final script file to disk: ", target_gd_path)
 	else:
 		print("OpenGDS failed with exit code: ", exit_code)
+
+static func DeleteDirectoryRecursive(path: String) -> void:
+	var dir := DirAccess.open(path)
+
+	if dir == null:
+		return
+
+	dir.list_dir_begin()
+
+	while true:
+		var file_name := dir.get_next()
+
+		if file_name == "":
+			break
+
+		if file_name == "." or file_name == "..":
+			continue
+
+		var full_path := path.path_join(file_name)
+
+		if dir.current_is_dir():
+			DeleteDirectoryRecursive(full_path)
+		else:
+			DirAccess.remove_absolute(full_path)
+
+	dir.list_dir_end()
+
+	DirAccess.remove_absolute(path)
+
+static func _build_diff(current_mod_dir: String,mod_root: String,base_root: String,staging_root: String,changed_files: Array[String]) -> void:
+	var dir := DirAccess.open(current_mod_dir)
+
+	if dir == null:
+		print("Could not open directory: " + current_mod_dir)
+		return
+
+	dir.list_dir_begin()
+
+	while true:
+		var file_name := dir.get_next()
+
+		if file_name == "":
+			break
+
+		if file_name == "." or file_name == "..":
+			continue
+
+		if file_name == ".godot":
+			continue
+
+		var mod_path := current_mod_dir.path_join(file_name)
+
+		# Calculate path relative to the mod project root.
+		var relative_path := mod_path.trim_prefix(mod_root)
+		relative_path = relative_path.trim_prefix("/")
+
+		var base_path := base_root.path_join(relative_path)
+		var staging_path := staging_root.path_join(relative_path)
+
+		if dir.current_is_dir():
+			if (Main.ignores.CheckDir(relative_path)):
+				_build_diff(
+					mod_path,
+					mod_root,
+					base_root,
+					staging_root,
+					changed_files
+				)
+		else:
+			# project.godot belongs to the temporary project and
+			# shouldn't be considered a mod asset.
+			if relative_path == "project.godot":
+				continue
+			
+			if (!Main.ignores.CheckFile(relative_path)):
+				continue
+			
+			var is_new := not FileAccess.file_exists(base_path)
+			var is_changed := false
+
+			if not is_new:
+				is_changed = not _files_are_identical(
+					mod_path,
+					base_path
+				)
+
+			if is_new or is_changed:
+				print("  + " + relative_path)
+
+				_copy_file(
+					mod_path,
+					staging_path
+				)
+
+				changed_files.append(relative_path)
+
+	dir.list_dir_end()
+
+static func _files_are_identical(file_a: String,file_b: String) -> bool:
+
+	var hash_a := FileAccess.get_sha256(file_a)
+	var hash_b := FileAccess.get_sha256(file_b)
+
+	return hash_a == hash_b
+
+
+static func _copy_file(source: String, destination: String) -> void:
+
+	var parent := destination.get_base_dir()
+
+	DirAccess.make_dir_recursive_absolute(parent)
+
+	var data := FileAccess.get_file_as_bytes(source)
+
+	var file := FileAccess.open(
+		destination,
+		FileAccess.WRITE
+	)
+
+	if file == null:
+		print("Failed to create: " + destination)
+		return
+
+	file.store_buffer(data)
+	file.close()
+
+
+func _remove_directory_recursive(path: String) -> void:
+	var dir := DirAccess.open(path)
+
+	if dir == null:
+		return
+
+	dir.list_dir_begin()
+
+	while true:
+		var file_name := dir.get_next()
+
+		if file_name == "":
+			break
+
+		if file_name == "." or file_name == "..":
+			continue
+
+		var full_path := path.path_join(file_name)
+
+		if dir.current_is_dir():
+			_remove_directory_recursive(full_path)
+		else:
+			DirAccess.remove_absolute(full_path)
+
+	dir.list_dir_end()
+
+	DirAccess.remove_absolute(path)
 
 func is_python_installed() -> bool:
 	var output: Array[String] = []
