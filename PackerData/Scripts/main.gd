@@ -77,6 +77,9 @@ func GeneratePack() -> void:
 	print("--------- Cleaning Up Dif ---------")
 	Helper.DeleteDirectoryRecursive(execPath + "Dif")
 	
+	dirs.ModPackDir = execPath + modFileName
+	ResourceSaver.save(dirs, execPath + "SavedDir.tres")
+	
 	if exit_code == 0:
 		print("Mod pack successfully created at: " + execPath)
 	else:
