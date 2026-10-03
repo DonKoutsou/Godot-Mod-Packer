@@ -222,8 +222,44 @@ static func _build_diff(current_mod_dir: String,mod_root: String,base_root: Stri
 					mod_path,
 					staging_path
 				)
-
 				changed_files.append(relative_path)
+				if (relative_path.ends_with(".tres")):
+					
+					_copy_file(
+						mod_path + ".uid",
+						staging_path + ".uid"
+					)
+					print("  + " + relative_path + ".uid")
+					changed_files.append(relative_path + ".uid")
+					
+					#var loadedRes : Resource = load("res://" + relative_path)
+					
+					var deps = ResourceLoader.get_dependencies("res://" + relative_path)
+					for dependency in deps:
+						
+						var dependencyLoc : String
+						
+						if dependency.contains("::"):
+							dependencyLoc = dependency.get_slice("::", 2)
+						else:		
+							dependencyLoc = dependency
+						
+						var dependency_staging_path := dependencyLoc.replace("res:/", staging_root)
+						
+						_copy_file(
+							dependencyLoc,
+							dependency_staging_path
+						)
+						changed_files.append(dependencyLoc)
+						print("Adding Dependency + " + dependencyLoc)
+						
+						_copy_file(
+							dependencyLoc + ".uid",
+							dependency_staging_path + ".uid"
+						)
+						changed_files.append(dependencyLoc + ".uid")
+						print("Adding Dependency + " + dependencyLoc + ".uid")
+				
 
 	dir.list_dir_end()
 
@@ -252,7 +288,9 @@ static func _copy_file(source: String, destination: String) -> void:
 		print("Failed to create: " + destination)
 		return
 
-	file.store_buffer(data)
+	var result = file.store_buffer(data)
+	if (!result):
+		print("File copying had errors")
 	file.close()
 
 

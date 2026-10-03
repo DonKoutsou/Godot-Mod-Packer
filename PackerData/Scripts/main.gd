@@ -52,9 +52,15 @@ func GeneratePack() -> void:
 		printerr("Missing Unpacked Game Data")
 		return
 	
+	if (dirs.BaseDataDir == "" or !FileAccess.file_exists(dirs.BaseDataDir)):
+		printerr("Wrong Base Pack")
+	
+	ProjectSettings.load_resource_pack(dirs.BaseDataDir)
+	
 	print("--------- Generating Project Dif ---------")
 	Helper._build_diff(dirs.ModDir, dirs.ModDir, dirs.UnpackedDataDir, execPath + "Dif", [])
-	
+	generate_Import_Files(execPath + "Dif")
+	#return
 	if (!DirAccess.dir_exists_absolute(execPath + "Dif")):
 		printerr("No differances found in files, opearation Canceled")
 		return
@@ -68,6 +74,7 @@ func GeneratePack() -> void:
 	var pack_args = [
 		"--headless", 
 		"--path", execPath + "Dif",
+		"--patches", dirs.BaseDataDir,
 		"--export-pack", "Windows", execPath + modFileName
 	]
 	
@@ -87,22 +94,22 @@ func GeneratePack() -> void:
 
 #--------------------------------------------------------------
 ##Launch godot on the background to import all the resources and generate the import files
-func generate_Import_Files():
+func generate_Import_Files(dir : String):
 	#check for godot exec
 	if not FileAccess.file_exists(dirs.ExecDir):
 		print("Godot Editor binary missing from tool directory!")
 		return
-	if (dirs.ModDir == ""):
-		print("Missing Mod Directory")
-		return
+	#if (dirs.ModDir == ""):
+		#print("Missing Mod Directory")
+		#return
 	#arguments for executing godot
 	#1 headless and editor to open editor hidden
-	var import_args = [ "--headless",  "--editor","--path", dirs.ModDir, "--quit"]
+	var import_args = [ "--headless",  "--editor","--path", dir, "--quit"]
 	
 	print("Importing assets...")
 	
 	#create a basic project file for godot to use
-	ensure_project_godot_exists(dirs.ModDir)
+	ensure_project_godot_exists(dir)
 	
 	#import assets to generate import files
 	var output = []
