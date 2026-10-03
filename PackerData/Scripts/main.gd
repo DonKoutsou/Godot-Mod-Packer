@@ -55,11 +55,13 @@ func GeneratePack() -> void:
 	if (dirs.BaseDataDir == "" or !FileAccess.file_exists(dirs.BaseDataDir)):
 		printerr("Wrong Base Pack")
 	
+	Helper.DeleteDirectoryRecursive(execPath + "Dif") #clean up before starting
+	
 	ProjectSettings.load_resource_pack(dirs.BaseDataDir)
 	
 	print("--------- Generating Project Dif ---------")
 	Helper._build_diff(dirs.ModDir, dirs.ModDir, dirs.UnpackedDataDir, execPath + "Dif", [])
-	generate_Import_Files(execPath + "Dif")
+	#generate_Import_Files(execPath + "Dif")
 	#return
 	if (!DirAccess.dir_exists_absolute(execPath + "Dif")):
 		printerr("No differances found in files, opearation Canceled")

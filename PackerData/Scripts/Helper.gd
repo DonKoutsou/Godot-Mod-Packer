@@ -216,52 +216,47 @@ static func _build_diff(current_mod_dir: String,mod_root: String,base_root: Stri
 				)
 
 			if is_new or is_changed:
-				print("  + " + relative_path)
-
+			
 				_copy_file(
 					mod_path,
-					staging_path
+					staging_path,
+					changed_files
 				)
-				changed_files.append(relative_path)
-				if (relative_path.ends_with(".tres")):
-					
-					_copy_file(
-						mod_path + ".uid",
-						staging_path + ".uid"
-					)
-					print("  + " + relative_path + ".uid")
-					changed_files.append(relative_path + ".uid")
-					
+
+				if (mod_path.ends_with(".tres")):
 					#var loadedRes : Resource = load("res://" + relative_path)
-					
 					var deps = ResourceLoader.get_dependencies("res://" + relative_path)
-					for dependency in deps:
-						
-						var dependencyLoc : String
-						
-						if dependency.contains("::"):
-							dependencyLoc = dependency.get_slice("::", 2)
-						else:		
-							dependencyLoc = dependency
-						
-						var dependency_staging_path := dependencyLoc.replace("res:/", staging_root)
-						
-						_copy_file(
-							dependencyLoc,
-							dependency_staging_path
-						)
-						changed_files.append(dependencyLoc)
-						print("Adding Dependency + " + dependencyLoc)
-						
-						_copy_file(
-							dependencyLoc + ".uid",
-							dependency_staging_path + ".uid"
-						)
-						changed_files.append(dependencyLoc + ".uid")
-						print("Adding Dependency + " + dependencyLoc + ".uid")
+					if (deps.size() > 0):
+						SaveDep(deps, mod_root, staging_root, changed_files)
+					else:
+						print("thing")
 				
 
 	dir.list_dir_end()
+
+static func SaveDep(dependencies : PackedStringArray, mod_dir : String, staging_root : String, changed_files: Array[String]) -> void:
+	for dependency in dependencies:
+		var dependencyLoc : String
+		
+		if dependency.contains("::"):
+			dependencyLoc = dependency.get_slice("::", 2)
+		else:		
+			dependencyLoc = dependency
+		
+		var dependency_staging_path := dependencyLoc.replace("res:/", staging_root)
+		dependencyLoc = dependencyLoc.replace("res:/", mod_dir)
+
+		
+		if (!FileAccess.file_exists(dependency_staging_path)):
+			_copy_file(
+				dependencyLoc,
+				dependency_staging_path,
+				changed_files
+			)
+		
+		if (dependencyLoc.ends_with(".tres")):
+			SaveDep(ResourceLoader.get_dependencies(dependencyLoc), mod_dir, staging_root, changed_files)
+			
 
 static func _files_are_identical(file_a: String,file_b: String) -> bool:
 
@@ -271,8 +266,7 @@ static func _files_are_identical(file_a: String,file_b: String) -> bool:
 	return hash_a == hash_b
 
 
-static func _copy_file(source: String, destination: String) -> void:
-
+static func _copy_file(source: String, destination: String, changed_files : Array[String]) -> void:
 	var parent := destination.get_base_dir()
 
 	DirAccess.make_dir_recursive_absolute(parent)
@@ -292,6 +286,19 @@ static func _copy_file(source: String, destination: String) -> void:
 	if (!result):
 		print("File copying had errors")
 	file.close()
+	
+	print("  + " + source + " to " + destination)
+	changed_files.append(source)
+	
+	if (source.ends_with(".tres")):
+		var uidPath = source + ".uid"
+		var destinationUID = destination + ".uid"
+		if (!FileAccess.file_exists(destinationUID)):
+			_copy_file(
+				uidPath,
+				destinationUID,
+				changed_files
+			)
 
 
 func _remove_directory_recursive(path: String) -> void:
