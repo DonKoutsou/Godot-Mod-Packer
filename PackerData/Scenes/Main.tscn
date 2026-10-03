@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://byqe6jh8wbxy0"]
 
 [ext_resource type="Script" uid="uid://ikhimqfpe8tc" path="res://PackerData/Scripts/main.gd" id="1_glv2v"]
-[ext_resource type="PackedScene" uid="uid://sf4cxl8op2tv" path="res://PackerData/Scenes/ResourcePicker.tscn" id="3_r0du0"]
+[ext_resource type="PackedScene" uid="uid://sf4cxl8op2tv" path="res://MetalEngineBase/Utils/ResourcePicker.tscn" id="3_r0du0"]
 
 [node name="Control" type="Control" unique_id=2138693863 node_paths=PackedStringArray("mod_Location", "exec_Path", "base_Pack", "unpacked_base")]
 layout_mode = 3

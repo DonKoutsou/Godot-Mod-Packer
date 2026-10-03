@@ -1,6 +1,6 @@
 extends RefCounted
 
-class_name Helper
+class_name PackerHelper
 
 static func get_target_path_from_remap(remap_file_path: String) -> String:
 	var config = ConfigFile.new()

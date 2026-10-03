@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="Ignores" format=3 uid="uid://bglxgruq7c4jk"]
 
-[ext_resource type="Script" uid="uid://vsjfalxj0iwi" path="res://PackerData/Scripts/Ignores.gd" id="1_kbajc"]
+[ext_resource type="Script" uid="uid://vsjfalxj0iwi" path="res://MetalEngineBase/Utils/Ignores.gd" id="1_kbajc"]
 
 [resource]
 script = ExtResource("1_kbajc")

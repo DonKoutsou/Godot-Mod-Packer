@@ -55,12 +55,12 @@ func GeneratePack() -> void:
 	if (dirs.BaseDataDir == "" or !FileAccess.file_exists(dirs.BaseDataDir)):
 		printerr("Wrong Base Pack")
 	
-	Helper.DeleteDirectoryRecursive(execPath + "Dif") #clean up before starting
+	PackerHelper.DeleteDirectoryRecursive(execPath + "Dif") #clean up before starting
 	
 	ProjectSettings.load_resource_pack(dirs.BaseDataDir)
 	
 	print("--------- Generating Project Dif ---------")
-	Helper._build_diff(dirs.ModDir, dirs.ModDir, dirs.UnpackedDataDir, execPath + "Dif", [])
+	PackerHelper._build_diff(dirs.ModDir, dirs.ModDir, dirs.UnpackedDataDir, execPath + "Dif", [])
 	#generate_Import_Files(execPath + "Dif")
 	#return
 	if (!DirAccess.dir_exists_absolute(execPath + "Dif")):
@@ -84,7 +84,7 @@ func GeneratePack() -> void:
 	var exit_code = OS.execute(dirs.ExecDir, pack_args, output, true)
 
 	print("--------- Cleaning Up Dif ---------")
-	Helper.DeleteDirectoryRecursive(execPath + "Dif")
+	PackerHelper.DeleteDirectoryRecursive(execPath + "Dif")
 	
 	dirs.ModPackDir = execPath + modFileName
 	ResourceSaver.save(dirs, execPath + "SavedDir.tres")
@@ -130,7 +130,7 @@ func unpack_pck_to_disk() -> void:
 	unpacked_base.SetFile(output_dir)
 	_on_unpacked_base_changed(output_dir)
 	
-	Helper.DeleteDirectoryRecursive(output_dir)
+	PackerHelper.DeleteDirectoryRecursive(output_dir)
 	# 1. Mount the external PCK file into Godot's virtual filesystem
 	var success = ProjectSettings.load_resource_pack(dirs.BaseDataDir)
 	if not success:
@@ -142,7 +142,7 @@ func unpack_pck_to_disk() -> void:
 	# 2. Start the recursive extraction process from the root virtual directory
 	_extract_directory_recursive("res://", output_dir)
 	
-	Helper.reconstruct_all_uid_files(output_dir)
+	PackerHelper.reconstruct_all_uid_files(output_dir)
 
 	print("Extraction complete!")
 
@@ -199,7 +199,7 @@ func _extract_directory_recursive(virtual_dir_path: String, local_dir_path: Stri
 						if next_virtual_path.ends_with(".remap"):
 							HandleRemapFile(next_virtual_path, next_local_path)
 						if (next_local_path.ends_with(".gdc")):
-							Helper.run_opengds_decompiler(next_local_path)
+							PackerHelper.run_opengds_decompiler(next_local_path)
 					else:
 						print("Error writing physical file: ", next_local_path)
 				else:
@@ -211,7 +211,7 @@ func _extract_directory_recursive(virtual_dir_path: String, local_dir_path: Stri
 
 #--------------------------------------------------------------
 func HandleImportFile(path : String, localPath : String) -> void:
-	var targetPath = Helper.get_target_path_from_import(path)
+	var targetPath = PackerHelper.get_target_path_from_import(path)
 
 	var tex = load(targetPath) as Texture2D
 	var saveLoc = localPath.get_basename()
@@ -240,7 +240,7 @@ func HandleImportFile(path : String, localPath : String) -> void:
 #--------------------------------------------------------------
 func HandleRemapFile(path : String, localPath : String) -> void:
 	#get the path the remap points to
-	var targetPath = Helper.get_target_path_from_remap(path)
+	var targetPath = PackerHelper.get_target_path_from_remap(path)
 	
 	#remove the .remap
 	var saveLoc = localPath.get_basename()
